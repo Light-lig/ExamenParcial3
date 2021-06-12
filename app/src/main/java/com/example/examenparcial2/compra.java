@@ -3,38 +3,57 @@ package com.example.examenparcial2;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.room.Room;
 
 import android.annotation.SuppressLint;
+import android.app.ProgressDialog;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
-import android.webkit.WebView;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import com.example.examenparcial2.DB.AppDataBase;
+import com.android.volley.AuthFailureError;
+import com.android.volley.DefaultRetryPolicy;
+import com.android.volley.NetworkError;
+import com.android.volley.NetworkResponse;
+import com.android.volley.NoConnectionError;
+import com.android.volley.ParseError;
+import com.android.volley.Request;
+import com.android.volley.Response;
+import com.android.volley.ServerError;
+import com.android.volley.TimeoutError;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 import com.example.examenparcial2.entities.Factura;
+import com.example.examenparcial2.util.Constantes;
 import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.datepicker.MaterialPickerOnPositiveButtonClickListener;
-import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
-import org.w3c.dom.Text;
+import org.json.JSONException;
+import org.json.JSONObject;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class compra extends AppCompatActivity {
     TextInputLayout  cmbCombustible,txtFactura, txtFecha,txtMonto, txtKm;;
     AutoCompleteTextView cmbComb;
     Button btnFecha, btnGuardar;
     String selectedType;
+    private Constantes con = new Constantes();
+    String URL = "http://"+con.IP+":8080/ExamenFinalPhpAndroid/endpoint/agregarFactura.php";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -51,6 +70,7 @@ public class compra extends AppCompatActivity {
         btnFecha = (Button) findViewById(R.id.btnFecha);
         btnGuardar = (Button) findViewById(R.id.btnRegistrarCompra);
         txtFecha.setEnabled(false);
+
         List<String> item = new ArrayList();
         item.add("DIESEL");
         item.add("PREMIUM");
@@ -101,8 +121,7 @@ public class compra extends AppCompatActivity {
         btnGuardar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                AppDataBase db = Room.databaseBuilder(compra.this,
-                        AppDataBase.class,"dbFactura").allowMainThreadQueries().build();
+
                 if(validar(txtFactura) &&
                     validar(txtFecha) &&
                     validar(txtKm) &&
@@ -116,12 +135,9 @@ public class compra extends AppCompatActivity {
                             Double.parseDouble(txtMonto.getEditText().getText().toString()),
                             Double.parseDouble(txtKm.getEditText().getText().toString())
                     );
-                    Long reg = db.facturaDao().insert(factura);
+                    insertarCompra(factura);
                     limpiarCajas();
-                    //Mostrar un mensaje de confirmacion al usuario
-                    Toast.makeText(getApplicationContext(),
-                            "Registro almacenado correctamente",
-                            Toast.LENGTH_SHORT).show();
+
                 }
 
             }
@@ -129,6 +145,93 @@ public class compra extends AppCompatActivity {
 
 
 
+    }
+    public void insertarCompra(Factura fac){
+        ProgressDialog barraProgreso = new ProgressDialog(this);
+        barraProgreso.show();
+
+
+        StringRequest  request = new StringRequest(Request.Method.POST, URL,
+                new Response.Listener<String >() {
+                    @Override
+                    public void onResponse(String  response) {
+                     try {
+                         if(response != null){
+                             if(response.equals("Se ingreso correctamente")){
+                                 Toast.makeText(getBaseContext(),response,Toast.LENGTH_LONG).show();
+                                 barraProgreso.dismiss();
+                             }else{
+                                 Toast.makeText(getBaseContext(),response,Toast.LENGTH_LONG).show();
+                                 barraProgreso.dismiss();
+                             }
+                         }else{
+                             Toast.makeText(getBaseContext(),response,Toast.LENGTH_LONG).show();
+
+                             barraProgreso.dismiss();
+
+                         }
+
+
+                     }catch (Exception e){
+                        e.printStackTrace();
+                     }
+
+                    }
+                },
+
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        if (error instanceof TimeoutError || error instanceof NoConnectionError) {
+                            Toast.makeText(getBaseContext(),
+                                    getBaseContext().getString(R.string.error_network_timeout),
+                                    Toast.LENGTH_LONG).show();
+                            barraProgreso.dismiss();
+                        } else if (error instanceof AuthFailureError) {
+                            Toast.makeText(getBaseContext(),
+                                    getBaseContext().getString(R.string.error_network_timeout),
+                                    Toast.LENGTH_LONG).show();
+                            barraProgreso.dismiss();
+                        } else if (error instanceof ServerError) {
+                            Toast.makeText(getBaseContext(),
+                                    getBaseContext().getString(R.string.error_network_timeout),
+                                    Toast.LENGTH_LONG).show();
+                            barraProgreso.dismiss();
+                        } else if (error instanceof NetworkError) {
+                            Toast.makeText(getBaseContext(),
+                                    getBaseContext().getString(R.string.error_network_timeout),
+                                    Toast.LENGTH_LONG).show();
+                            barraProgreso.dismiss();
+                        } else if (error instanceof ParseError) {
+                            Toast.makeText(getBaseContext(),
+                                    getBaseContext().getString(R.string.error_network_timeout),
+                                    Toast.LENGTH_LONG).show();
+                            barraProgreso.dismiss();
+                        }
+                    }
+
+                }
+                ){
+            protected Map<String,String> getParams(){
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("$txtnumeroFactura",String.valueOf(fac.getNumeroFactura()));
+                String newstring = new SimpleDateFormat("yyyy-MM-dd").format(fac.getFechaDeCompra());
+                params.put("$txtfechadeCompra", newstring);
+                params.put("$txttipoCombustible", fac.getTipoCombustible());
+                params.put("$txtmontoCompra", String.valueOf(fac.getMontoCompra()));
+                params.put("$txtKm", String.valueOf(fac.getKm()));
+                return params;
+            }
+        };
+
+        request.setRetryPolicy(new
+
+                DefaultRetryPolicy(60000,
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+
+
+        Volley.newRequestQueue(getBaseContext()).add(request);
     }
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {

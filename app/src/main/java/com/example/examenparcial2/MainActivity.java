@@ -1,8 +1,6 @@
 package com.example.examenparcial2;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.room.Room;
-
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
@@ -10,9 +8,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
 
-import com.example.examenparcial2.DB.AppDataBase;
-
-import java.util.EventListener;
 
 public class MainActivity extends AppCompatActivity {
     ImageButton btnAgregar, btnReporte;

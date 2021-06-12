@@ -2,8 +2,8 @@ package com.example.examenparcial2.entities;
 
 public class Promedio {
     String tipo;
-    int montoPromedio;
-    int kmPromedio;
+    double montoPromedio;
+    double kmPromedio;
 
     public String getTipo() {
         return tipo;
@@ -13,19 +13,19 @@ public class Promedio {
         this.tipo = tipo;
     }
 
-    public int getMontoPromedio() {
+    public double getMontoPromedio() {
         return montoPromedio;
     }
 
-    public void setMontoPromedio(int montoPromedio) {
+    public void setMontoPromedio(double montoPromedio) {
         this.montoPromedio = montoPromedio;
     }
 
-    public int getKmPromedio() {
+    public double getKmPromedio() {
         return kmPromedio;
     }
 
-    public void setKmPromedio(int kmPromedio) {
+    public void setKmPromedio(double kmPromedio) {
         this.kmPromedio = kmPromedio;
     }
 }

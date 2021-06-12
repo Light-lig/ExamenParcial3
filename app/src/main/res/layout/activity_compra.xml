@@ -9,6 +9,8 @@
     android:padding="10dp"
     tools:context=".compra">
 
+
+
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/txtNumeroFacturaLayout"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"

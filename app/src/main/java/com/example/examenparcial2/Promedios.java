@@ -5,31 +5,46 @@ import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.room.Room;
+
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
-import android.content.Context;
+
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
-import android.content.Intent;
-import android.hardware.camera2.CameraManager;
+
 import android.os.Bundle;
+import android.util.Base64;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.example.examenparcial2.DB.AppDataBase;
+
+import com.android.volley.DefaultRetryPolicy;
+import com.android.volley.Request;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonArrayRequest;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
 import com.example.examenparcial2.adaptadores.FacturaAdapter;
 import com.example.examenparcial2.entities.DateConverter;
 import com.example.examenparcial2.entities.Factura;
 import com.example.examenparcial2.entities.Promedio;
+import com.example.examenparcial2.util.Constantes;
 import com.example.examenparcial2.util.RecyclerItemClickListener;
 import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.datepicker.MaterialPickerOnPositiveButtonClickListener;
 import com.google.android.material.textfield.TextInputLayout;
 
-import java.sql.Date;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.Date;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -38,9 +53,11 @@ import java.util.List;
 public class Promedios extends AppCompatActivity {
     private RecyclerView rcvFacturas;
     private FacturaAdapter adapter;
-    private List<Promedio> list;
+    private List<Promedio> list = new ArrayList<Promedio>();
     private Button btnFechaDesde, btnFechahasta, btnFiltrar;
     private TextInputLayout txtFechaLayout1, txtFechaLayout2;
+    private Constantes con = new Constantes();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -57,47 +74,25 @@ public class Promedios extends AppCompatActivity {
         txtFechaLayout2.setEnabled(false);
         rcvFacturas = findViewById(R.id.rcvReporte);
         rcvFacturas.setLayoutManager(new LinearLayoutManager(this));
-        AppDataBase db = Room.databaseBuilder(Promedios.this,
-                AppDataBase.class,"dbFactura").allowMainThreadQueries().build();
-        list = db.facturaDao().findAll();
+
         adapter = new FacturaAdapter(list);
         rcvFacturas.setAdapter(adapter);
+        CargarDatos();
         rcvFacturas.addOnItemTouchListener(new RecyclerItemClickListener(getApplicationContext(),
                 rcvFacturas, new RecyclerItemClickListener.OnItemClickListener() {
-
-
             @Override
             public void onItemClick(View view, int position) {
                 boolean usarFechas = false;
-                Date date1 = null;
-                Date date2 = null;
+                String date1 = null;
+                String date2 = null;
                 if(validar(txtFechaLayout1,false) && validar(txtFechaLayout2,false) && validarFechas(txtFechaLayout1,txtFechaLayout2,false)){
-                     date1 = new Date(DateConverter.toTimestamp(new java.util.Date(txtFechaLayout1.getEditText().getText().toString())));
-                     date2 = new Date(DateConverter.toTimestamp(new java.util.Date(txtFechaLayout2.getEditText().getText().toString())));
+                     date1 =  new SimpleDateFormat("yyyy-MM-dd").format(new Date(txtFechaLayout1.getEditText().getText().toString()));
+                     date2 =  new SimpleDateFormat("yyyy-MM-dd").format(new Date(txtFechaLayout2.getEditText().getText().toString()));
                 }
-                    AppDataBase db = Room.databaseBuilder(Promedios.this,
-                            AppDataBase.class,"dbFactura").allowMainThreadQueries().build();
+
 
                     String tipo = list.get(position).getTipo();
-                    String Facturas = "";
-                    List<Factura> listNueva = db.facturaDao().findAllByFecha1andFecha2(DateConverter.toTimestamp(date1),DateConverter.toTimestamp(date2),tipo);
-                    AlertDialog.Builder builder = new AlertDialog.Builder(Promedios.this);
-                    Facturas += tipo + "\n";
-                SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy");
-
-                for (Factura fac : listNueva){
-                        Facturas += "- " + formatter.format(fac.getFechaDeCompra()) + ":" +"$"+fac.getMontoCompra() + "\n";
-                    }
-
-                    builder.setMessage(Facturas)
-                            .setTitle("Detalles de compras").setPositiveButton("Aceptar",new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int id) {
-                                dialog.dismiss();
-                        }
-                    });
-
-                    AlertDialog dialog = builder.create();
-                    dialog.show();
+                CargarDatosPorFechasTipo(date1, date2, tipo);
 
             }
 
@@ -157,20 +152,200 @@ public class Promedios extends AppCompatActivity {
             public void onClick(View v) {
 
                     if(validar(txtFechaLayout1,true) && validar(txtFechaLayout2,true) && validarFechas(txtFechaLayout1,txtFechaLayout2,true)){
-                        AppDataBase db = Room.databaseBuilder(Promedios.this,
-                                AppDataBase.class,"dbFactura").allowMainThreadQueries().build();
-                        Date date1 = new Date(DateConverter.toTimestamp(new java.util.Date(txtFechaLayout1.getEditText().getText().toString())));
-                        Date date2 = new Date(DateConverter.toTimestamp(new java.util.Date(txtFechaLayout2.getEditText().getText().toString())));
 
-                        List<Promedio> listNueva = db.facturaDao().findByFecha1andFecha2(DateConverter.toTimestamp(date1),DateConverter.toTimestamp(date2));
-                        list.clear();
-                        list.addAll(listNueva);
+                        String fecha1 = new SimpleDateFormat("yyyy-MM-dd").format(new Date(txtFechaLayout1.getEditText().getText().toString()));
+                        String fecha2 = new SimpleDateFormat("yyyy-MM-dd").format(new Date(txtFechaLayout2.getEditText().getText().toString()));
+                        CargarDatosPorFechas(fecha1, fecha2);
+                    }
+            }
+        });
+
+    }
+    public void CargarDatos(){
+        String URL = "http://"+con.IP+":8080/ExamenFinalPhpAndroid/endpoint/findAll.php";
+
+        ProgressDialog barraProgreso = new ProgressDialog(this);
+        barraProgreso.show();
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, URL, null,
+                new Response.Listener<JSONObject>() {
+                    @Override
+                    public void onResponse(JSONObject response) {
+                        if(response != null){
+                            try {
+
+                                JSONArray items = response.getJSONArray("items");
+
+                                for(int i=0;i<items.length();i++){
+                                    // Get current json object
+                                    JSONObject factura = items.getJSONObject(i);
+                                    Promedio pro = new Promedio();
+                                    // Get the current student (json object) data
+                                    pro.setTipo(factura.getString("tipo"));
+                                    pro.setKmPromedio(factura.getDouble("kmPromedio"));
+
+                                    pro.setMontoPromedio(factura.getDouble("montoPromedio"));
+                                    list.add(pro);
+                                    adapter.notifyDataSetChanged();
+                                }
+                                barraProgreso.dismiss();
+
+                            }catch (JSONException e){
+                                e.printStackTrace();
+                            }
+
+                        }
+
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Toast.makeText(getBaseContext(),error.toString(),Toast.LENGTH_LONG).show();
+                        barraProgreso.dismiss();
+                    }
+                });
+
+        request.setRetryPolicy(new
+
+                DefaultRetryPolicy(60000,
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+
+
+        Volley.newRequestQueue(this).add(request);
+
+    }
+    public void CargarDatosPorFechas(String fecha1, String fecha2){
+        String URL = "http://"+con.IP+":8080/ExamenFinalPhpAndroid/endpoint/filtro1.php?$txtfecha1="+fecha1+"&$txtfecha2="+fecha2;
+
+        ProgressDialog barraProgreso = new ProgressDialog(this);
+        barraProgreso.show();
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, URL, null,
+                new Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+                try {
+
+                    JSONArray items = response.getJSONArray("items");
+                    list.clear();
+                    for(int i=0;i<items.length();i++){
+                        // Get current json object
+                        JSONObject factura = items.getJSONObject(i);
+                        Promedio pro = new Promedio();
+                        // Get the current student (json object) data
+                        pro.setTipo(factura.getString("tipo"));
+                        pro.setKmPromedio(factura.getDouble("kmPromedio"));
+
+                        pro.setMontoPromedio(factura.getDouble("montoPromedio"));
+                        list.add(pro);
                         adapter.notifyDataSetChanged();
+                    }
+                    if(items.length() == 0){
+                        Toast.makeText(getBaseContext(),"No hay resultados.",Toast.LENGTH_LONG).show();
+                    }
+                    adapter.notifyDataSetChanged();
+                    barraProgreso.dismiss();
+
+                }catch (JSONException e){
+                    e.printStackTrace();
+                }
+
+            }
+
+
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Toast.makeText(getBaseContext(),error.toString(),Toast.LENGTH_LONG).show();
+                        barraProgreso.dismiss();
+                    }
+                });
+
+        request.setRetryPolicy(new
+
+                DefaultRetryPolicy(60000,
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+
+
+        Volley.newRequestQueue(this).add(request);
+
+    }
+    public void CargarDatosPorFechasTipo(String fecha1, String fecha2, String tipo){
+        String URL = "http://"+con.IP+":8080/ExamenFinalPhpAndroid/endpoint/filtro2.php?$txtfecha1="+fecha1+"&$txtfecha2="+fecha2+"&$txtTipo="+tipo;
+
+        ProgressDialog barraProgreso = new ProgressDialog(this);
+        barraProgreso.show();
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, URL, null,
+                new Response.Listener<JSONObject>() {
+                    @Override
+                    public void onResponse(JSONObject response) {
+                        try {
+
+                            JSONArray items = response.getJSONArray("items");
+                            List<Factura> listNueva = new ArrayList<>();
+                            for(int i=0;i<items.length();i++){
+                                // Get current json object
+                                JSONObject factura = items.getJSONObject(i);
+                                Factura fa = new Factura();
+                                // Get the current student (json object) data
+                                Date fecha = new SimpleDateFormat("yyyy-MM-dd").parse(factura.getString("fechadeCompra"));
+                                fa.setFechaDeCompra(fecha);
+                                fa.setMontoCompra(factura.getDouble("montoCompra"));
+
+                                listNueva.add(fa);
+
+                            }
+                            String Facturas = "";
+
+                            AlertDialog.Builder builder = new AlertDialog.Builder(Promedios.this);
+                            Facturas += tipo + "\n";
+                            SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy");
+
+                            for (Factura fac : listNueva){
+                                Facturas += "- " + formatter.format(fac.getFechaDeCompra()) + ":" +"$"+fac.getMontoCompra() + "\n";
+                            }
+
+                            builder.setMessage(Facturas)
+                                    .setTitle("Detalles de compras").setPositiveButton("Aceptar",new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int id) {
+                                    dialog.dismiss();
+                                }
+                            });
+
+                            AlertDialog dialog = builder.create();
+                            dialog.show();
+                            if(items.length() == 0){
+                                Toast.makeText(getBaseContext(),"No hay resultados.",Toast.LENGTH_LONG).show();
+                            }
+                            adapter.notifyDataSetChanged();
+                            barraProgreso.dismiss();
+
+                        }catch (JSONException | ParseException e){
+                            e.printStackTrace();
+                        }
+
                     }
 
 
-            }
-        });
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Toast.makeText(getBaseContext(),error.toString(),Toast.LENGTH_LONG).show();
+                        barraProgreso.dismiss();
+                    }
+                });
+
+        request.setRetryPolicy(new
+
+                DefaultRetryPolicy(60000,
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+
+
+        Volley.newRequestQueue(this).add(request);
 
     }
     @Override

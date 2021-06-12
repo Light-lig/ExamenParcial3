@@ -1,31 +1,25 @@
 package com.example.examenparcial2.entities;
 
-import androidx.annotation.Nullable;
-import androidx.room.ColumnInfo;
-import androidx.room.Entity;
-import androidx.room.PrimaryKey;
-import androidx.room.TypeConverters;
 
 import java.util.Date;
 
-@Entity
 public class Factura {
-    @PrimaryKey(autoGenerate = true)
     int idFactura;
-    @ColumnInfo(name="numero")
-    @Nullable
+
     int numeroFactura;
-    @ColumnInfo(name="fechacompra")
-    @TypeConverters(DateConverter.class)
+
     Date fechaDeCompra;
-    @ColumnInfo(name="tipocombustible")
+
     String tipoCombustible;
-    @ColumnInfo(name="monto")
+
     double montoCompra;
-    @ColumnInfo(name="km")
+
     double km;
 
-    public Factura( int numeroFactura, Date fechaDeCompra, String tipoCombustible, double montoCompra, double km) {
+    public Factura() {
+    }
+
+    public Factura(int numeroFactura, Date fechaDeCompra, String tipoCombustible, double montoCompra, double km) {
 
         this.numeroFactura = numeroFactura;
         this.fechaDeCompra = fechaDeCompra;
