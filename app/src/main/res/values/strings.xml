@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Consumo de combustible</string>
+    <string name="title_activity_integrantes">Integrantes</string>
+    <!--
+    This string is used for square devices and overridden by hello_world in
+    values-round/strings.xml for round devices.
+    -->
+    <string name="title_activity_compra">Registro de compra</string>
+    <string name="title_activity_promedio">Promedios</string>
+
+</resources>
